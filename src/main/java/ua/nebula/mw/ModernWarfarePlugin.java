@@ -1,8 +1,8 @@
 package ua.nebula.mw;
 
-import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.scheduler.BukkitTask;
 import ua.nebula.mw.aa.AirDefenseManager;
 import ua.nebula.mw.command.WarfareCommandAndMenu;
 import ua.nebula.mw.display.DisplayRigManager;
@@ -13,51 +13,62 @@ import ua.nebula.mw.vehicle.VehicleManager;
 
 public class ModernWarfarePlugin extends JavaPlugin {
 
-    private static ModernWarfarePlugin instance;
     private WarfareRegistry registry;
-    private DisplayRigManager rigManager;
+    private DisplayRigManager displayRigManager;
     private VehicleManager vehicleManager;
     private AirDefenseManager airDefenseManager;
     private GearManager gearManager;
+    private WarfareCommandAndMenu commandAndMenu;
+    private BukkitTask mainTickTask;
 
     @Override
     public void onEnable() {
-        instance = this;
         saveDefaultConfig();
 
         this.registry = new WarfareRegistry(this);
-        this.rigManager = new DisplayRigManager();
-        this.vehicleManager = new VehicleManager(this, rigManager);
+        this.registry.reloadSpecs();
+
+        this.displayRigManager = new DisplayRigManager(this);
+        this.vehicleManager = new VehicleManager(this, registry, displayRigManager);
         this.airDefenseManager = new AirDefenseManager(this, vehicleManager);
         this.gearManager = new GearManager(this, registry, vehicleManager);
+        this.commandAndMenu = new WarfareCommandAndMenu(this, registry);
 
-        WarfareCommandAndMenu cmdAndMenu = new WarfareCommandAndMenu(this, registry);
+        getServer().getPluginManager().registerEvents(new VehicleListener(this, registry, vehicleManager, gearManager), this);
+        getServer().getPluginManager().registerEvents(gearManager, this);
+        getServer().getPluginManager().registerEvents(commandAndMenu, this);
+
         PluginCommand milCmd = getCommand("mil");
         if (milCmd != null) {
-            milCmd.setExecutor(cmdAndMenu);
-            milCmd.setTabCompleter(cmdAndMenu);
+            milCmd.setExecutor(commandAndMenu);
+            milCmd.setTabCompleter(commandAndMenu);
+        } else {
+            getLogger().warning("Команда 'mil' не найдена в plugin.yml! Проверь файл ресурсов.");
         }
 
-        Bukkit.getPluginManager().registerEvents(new VehicleListener(this, vehicleManager, registry), this);
-        Bukkit.getPluginManager().registerEvents(gearManager, this);
-        Bukkit.getPluginManager().registerEvents(cmdAndMenu, this);
+        vehicleManager.restoreVehiclesFromWorlds();
 
-        long interval = Math.max(1L, getConfig().getLong("settings.tick-interval", 1L));
-        Bukkit.getScheduler().runTaskTimer(this, this::tickWorld, 20L, interval);
+        long period = Math.max(1L, getConfig().getLong("settings.tick-period", 1L));
+        this.mainTickTask = getServer().getScheduler().runTaskTimer(this, () -> {
+            vehicleManager.tickVehicles();
+            airDefenseManager.tickAirDefense();
+            gearManager.tickGear();
+        }, period, period);
 
-        getLogger().info("ModernWarfareDisplay (Zero-ResourcePack) успешно запущен!");
-    }
-
-    private void tickWorld() {
-        vehicleManager.tickAll();
-        airDefenseManager.tickAirDefense();
-        gearManager.tickGearEffects();
+        getLogger().info("ModernWarfareDisplay включён!");
     }
 
     @Override
     public void onDisable() {
+        if (mainTickTask != null) {
+            mainTickTask.cancel();
+            mainTickTask = null;
+        }
         if (airDefenseManager != null) {
             airDefenseManager.clearMissiles();
+        }
+        if (gearManager != null) {
+            gearManager.cleanupAll();
         }
         if (vehicleManager != null) {
             vehicleManager.cleanupAll();
@@ -65,16 +76,12 @@ public class ModernWarfarePlugin extends JavaPlugin {
         getLogger().info("ModernWarfareDisplay выключен.");
     }
 
-    public static ModernWarfarePlugin getInstance() {
-        return instance;
-    }
-
     public WarfareRegistry getRegistry() {
         return registry;
     }
 
-    public DisplayRigManager getRigManager() {
-        return rigManager;
+    public DisplayRigManager getDisplayRigManager() {
+        return displayRigManager;
     }
 
     public VehicleManager getVehicleManager() {
@@ -87,5 +94,9 @@ public class ModernWarfarePlugin extends JavaPlugin {
 
     public GearManager getGearManager() {
         return gearManager;
+    }
+
+    public WarfareCommandAndMenu getCommandAndMenu() {
+        return commandAndMenu;
     }
 }
