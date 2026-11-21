@@ -130,27 +130,49 @@ public class WarfareRegistry {
     public ItemStack createSpawnerItem(VehicleSpec spec) {
         ItemStack stack = new ItemStack(spec.category().getIcon());
         ItemMeta meta = stack.getItemMeta();
-        meta.setDisplayName("§6Призыв: §e" + spec.displayName());
-        List<String> lore = new ArrayList<>();
-        lore.add("§7Категория: §f" + spec.category().getDisplayName());
-        lore.add("§7Прочность: §c" + (int) spec.maxHp() + " HP");
-        lore.add("§7ПКМ по земле — развернуть технику");
-        meta.setLore(lore);
-        meta.getPersistentDataContainer().set(vehicleKey, PersistentDataType.STRING, spec.id());
-        stack.setItemMeta(meta);
+        if (meta != null) {
+            meta.setDisplayName("§6Призыв: §e" + spec.displayName());
+            List<String> lore = new ArrayList<>();
+            lore.add("§7Категория: §f" + spec.category().getDisplayName());
+            lore.add("§7Прочность: §c" + (int) spec.maxHp() + " HP");
+            lore.add("§7ПКМ по земле — развернуть технику");
+            meta.setLore(lore);
+            meta.getPersistentDataContainer().set(vehicleKey, PersistentDataType.STRING, spec.id());
+            stack.setItemMeta(meta);
+        }
         return stack;
     }
 
     public ItemStack createGearItem(GearSpec spec) {
         ItemStack stack = new ItemStack(spec.material());
         ItemMeta meta = stack.getItemMeta();
-        if (meta instanceof LeatherArmorMeta leatherMeta && spec.dyeColor() != null) {
-            leatherMeta.setColor(spec.dyeColor());
+        if (meta != null) {
+            if (meta instanceof LeatherArmorMeta leatherMeta && spec.dyeColor() != null) {
+                leatherMeta.setColor(spec.dyeColor());
+            }
+            meta.setDisplayName("§a" + spec.displayName());
+            List<String> lore = new ArrayList<>();
+            if (spec.armor()) {
+                lore.add("§7Снижение урона: §b" + (int) (spec.damageReduction() * 100) + "%");
+            } else {
+                lore.add("§7Урон: §c" + spec.damage());
+                lore.add("§7Магазин: §f" + spec.magazineSize() + " патр.");
+                if (spec.guided()) {
+                    lore.add("§7Режим: §eСамонаведение");
+                }
+            }
+            meta.setLore(lore);
+            meta.getPersistentDataContainer().set(gearKey, PersistentDataType.STRING, spec.id());
+            stack.setItemMeta(meta);
         }
-        meta.setDisplayName("§a" + spec.displayName());
-        List<String> lore = new ArrayList<>();
-        if (spec.armor()) {
-            lore.add("§7Снижение урона: §b" + (int) (spec.damageReduction() * 100) + "%");
-        } else {
-            lore.add("§7Урон: §c" + spec.damage());
-            lore.add("§7Магазин: §f" + spec.magazineSize() +
+        return stack;
+    }
+
+    public NamespacedKey getVehicleKey() {
+        return vehicleKey;
+    }
+
+    public NamespacedKey getGearKey() {
+        return gearKey;
+    }
+}
