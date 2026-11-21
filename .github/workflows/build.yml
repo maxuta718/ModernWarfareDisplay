@@ -1,0 +1,24 @@
+name: Build ModernWarfareDisplay JAR
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/gradle-build-action@v3
+      - name: Build JAR
+        run: gradle build --no-daemon
+      - name: Upload JAR artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModernWarfareDisplay-jar
+          path: build/libs/*.jar
