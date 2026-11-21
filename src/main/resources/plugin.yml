@@ -1,0 +1,21 @@
+name: ModernWarfareDisplay
+version: 1.0.0
+main: ua.nebula.mw.ModernWarfarePlugin
+api-version: "1.21"
+folia-supported: false
+author: NebulaDev
+description: Zero-ResourcePack modern military vehicles, drones, AA systems, and infantry gear using Display entities.
+
+commands:
+  mil:
+    description: Управление военной техникой и снаряжением
+    usage: /<command> <give|menu|reload> [игрок] [id]
+    permission: mw.use
+
+permissions:
+  mw.use:
+    description: Доступ к меню и командам ModernWarfare
+    default: op
+  mw.admin:
+    description: Выдача техники, снаряжения и перезагрузка конфига
+    default: op
