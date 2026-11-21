@@ -6,6 +6,7 @@ import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.entity.Arrow;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
 import ua.nebula.mw.ModernWarfarePlugin;
@@ -141,13 +142,13 @@ public class AirDefenseManager {
         while (it.hasNext()) {
             GuidedMissile gm = it.next().getValue();
             if (gm.ticksRemaining() <= 0) {
-                org.bukkit.entity.Entity e = Bukkit.getEntity(gm.missileId());
+                Entity e = Bukkit.getEntity(gm.missileId());
                 if (e != null) e.remove();
                 it.remove();
                 continue;
             }
 
-            org.bukkit.entity.Entity rawMissile = Bukkit.getEntity(gm.missileId());
+            Entity rawMissile = Bukkit.getEntity(gm.missileId());
             ActiveVehicle target = vehicleManager.getVehicleById(gm.targetVehicleId());
 
             if (!(rawMissile instanceof Arrow missile) || !missile.isValid() || target == null || !target.isAnyEntityValid()) {
@@ -191,7 +192,7 @@ public class AirDefenseManager {
 
     public void clearMissiles() {
         for (UUID id : activeMissiles.keySet()) {
-            org.bukkit.entity.Entity e = Bukkit.getEntity(id);
+            Entity e = Bukkit.getEntity(id);
             if (e != null) e.remove();
         }
         activeMissiles.clear();
