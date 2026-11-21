@@ -176,7 +176,182 @@ public class VehicleManager {
             }
 
             if (vehicle.getPrimaryCooldown() > 0) {
-                vehicle.setPrimaryCooldown(vehicle.getPrimaryCooldown() - tickInterval);
+                vehicle.setPrimaryCooldown(Math.max(0, vehicle.getPrimaryCooldown() - tickInterval));
             }
             if (vehicle.getSecondaryCooldown() > 0) {
-                vehicle.setSecondaryCooldown(vehicle.getSecondaryCooldown
+                vehicle.setSecondaryCooldown(Math.max(0, vehicle.getSecondaryCooldown() - tickInterval));
+            }
+
+            updateMovement(vehicle, droneMaxRange, allowBlockDamage);
+            if (vehicle.getSpec().category() == ContentCategory.AA) {
+                updateRadarPing(vehicle, radarRange);
+            }
+        }
+    }
+
+    private void updateMovement(ActiveVehicle vehicle, double droneMaxRange, boolean allowBlockDamage) {
+        VehicleSpec spec = vehicle.getSpec();
+        Location current = vehicle.getLocation();
+        if (current == null || current.getWorld() == null) return;
+
+        if (vehicle.hasDriver()) {
+            Player driver = plugin.getServer().getPlayer(vehicle.getDriverId());
+            if (driver == null || !driver.isOnline()) {
+                vehicle.setDriverId(null);
+                vehicle.setForwardSpeed(0.0);
+            } else {
+                float yaw = driver.getLocation().getYaw();
+                current.setYaw(yaw);
+
+                if (!spec.stationary()) {
+                    double maxSpeed = spec.speed() * 0.25;
+                    double targetSpeed = vehicle.getForwardSpeed();
+                    if (Math.abs(targetSpeed) < 0.01) {
+                        targetSpeed = maxSpeed * 0.5;
+                    }
+                    Vector forward = driver.getLocation().getDirection().setY(0);
+                    if (forward.lengthSquared() > 1e-6) {
+                        forward.normalize().multiply(targetSpeed);
+                        Location next = current.clone().add(forward);
+
+                        if (spec.category() == ContentCategory.DRONES && vehicle.getSpawnLocation() != null
+                                && next.distanceSquared(vehicle.getSpawnLocation()) > droneMaxRange * droneMaxRange) {
+                            driver.sendMessage("§cПотеряна связь с дроном (выход за радиус " + (int) droneMaxRange + " м)!");
+                            detonateVehicle(vehicle, 2.5f);
+                            return;
+                        }
+
+                        RayTraceResult hit = current.getWorld().rayTraceBlocks(
+                                current.clone().add(0, 0.5, 0),
+                                forward.clone().normalize(),
+                                forward.length() + 0.5,
+                                FluidCollisionMode.NEVER,
+                                true
+                        );
+                        if (hit == null) {
+                            current.setX(next.getX());
+                            current.setZ(next.getZ());
+                            if (spec.category() == ContentCategory.DRONES || spec.category() == ContentCategory.AIR) {
+                                double yDelta = driver.getLocation().getDirection().getY() * targetSpeed * 0.6;
+                                current.setY(Math.max(current.getWorld().getMinHeight() + 1.0, current.getY() + yDelta));
+                            } else {
+                                int highestY = current.getWorld().getHighestBlockYAt(current);
+                                current.setY(Math.max(highestY + 1.0, current.getY()));
+                            }
+                        } else if (spec.category() == ContentCategory.DRONES && "fpv_drone".equalsIgnoreCase(spec.id())) {
+                            detonateVehicle(vehicle, (float) plugin.getConfig().getDouble("settings.explosion-power-fpv", 5.0));
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+
+        rigManager.updateRigTransform(vehicle, current);
+        if (vehicle.getSeat() != null && vehicle.getSeat().isValid()) {
+            vehicle.getSeat().teleport(current);
+        }
+    }
+
+    private void updateRadarPing(ActiveVehicle vehicle, double radarRange) {
+        Location loc = vehicle.getLocation();
+        if (loc == null || loc.getWorld() == null) return;
+        double rangeSq = radarRange * radarRange;
+        for (ActiveVehicle other : vehiclesById.values()) {
+            if (other == vehicle || !other.isAnyEntityValid()) continue;
+            if (other.getSpec().category() == ContentCategory.AIR || other.getSpec().category() == ContentCategory.DRONES) {
+                if (other.getLocation().getWorld().equals(loc.getWorld())
+                        && other.getLocation().distanceSquared(loc) <= rangeSq) {
+                    loc.getWorld().spawnParticle(Particle.SONIC_BOOM, loc.clone().add(0, 1.5, 0), 1);
+                    break;
+                }
+            }
+        }
+    }
+
+    public void damageVehicle(ActiveVehicle vehicle, double amount, Entity attacker) {
+        if (vehicle == null || amount <= 0) return;
+        double nextHp = Math.max(0.0, vehicle.getHp() - amount);
+        vehicle.setHp(nextHp);
+        if (vehicle.getLocation() != null && vehicle.getLocation().getWorld() != null) {
+            vehicle.getLocation().getWorld().spawnParticle(
+                    Particle.DAMAGE_INDICATOR,
+                    vehicle.getLocation().clone().add(0, 1.0, 0),
+                    6, 0.4, 0.4, 0.4, 0.05
+            );
+        }
+        if (nextHp <= 0) {
+            detonateVehicle(vehicle, 3.5f);
+        }
+    }
+
+    public void detonateVehicle(ActiveVehicle vehicle, float power) {
+        if (vehicle == null) return;
+        Location loc = vehicle.getLocation();
+        if (loc != null && loc.getWorld() != null) {
+            boolean setFire = plugin.getConfig().getBoolean("settings.explosion-fire", false);
+            boolean breakBlocks = plugin.getConfig().getBoolean("settings.allow-block-damage", false);
+            loc.getWorld().createExplosion(loc, Math.max(0.5f, power), setFire, breakBlocks);
+        }
+        removeVehicle(vehicle.getVehicleId());
+    }
+
+    public void removeVehicle(UUID vehicleId) {
+        ActiveVehicle vehicle = vehiclesById.remove(vehicleId);
+        if (vehicle != null) {
+            removeVehicleInternal(vehicle);
+        }
+    }
+
+    private void removeVehicleInternal(ActiveVehicle vehicle) {
+        if (vehicle.getDriverId() != null) {
+            UUID removed = driverToVehicle.remove(vehicle.getDriverId());
+            if (removed != null) {
+                Player driver = plugin.getServer().getPlayer(vehicle.getDriverId());
+                if (driver != null && driver.isOnline() && vehicle.getLocation() != null && vehicle.getLocation().getWorld() != null) {
+                    driver.teleport(vehicle.getLocation().clone().add(0, 1.5, 0));
+                }
+            }
+        }
+        if (vehicle.getSeat() != null) {
+            seatToVehicle.remove(vehicle.getSeat().getUniqueId());
+        }
+        rigManager.removeRig(vehicle);
+    }
+
+    public void cleanupAll() {
+        for (ActiveVehicle vehicle : vehiclesById.values()) {
+            removeVehicleInternal(vehicle);
+        }
+        vehiclesById.clear();
+        seatToVehicle.clear();
+        driverToVehicle.clear();
+        projectileToOwnerVehicle.clear();
+    }
+
+    public ActiveVehicle getVehicleById(UUID id) {
+        return vehiclesById.get(id);
+    }
+
+    public ActiveVehicle getVehicleBySeat(UUID seatId) {
+        UUID id = seatToVehicle.get(seatId);
+        return id == null ? null : vehiclesById.get(id);
+    }
+
+    public ActiveVehicle getVehicleByDriver(UUID driverId) {
+        UUID id = driverToVehicle.get(driverId);
+        return id == null ? null : vehiclesById.get(id);
+    }
+
+    public ActiveVehicle getOwnerVehicleByProjectile(UUID projectileId) {
+        return projectileToOwnerVehicle.get(projectileId);
+    }
+
+    public void removeProjectileOwner(UUID projectileId) {
+        projectileToOwnerVehicle.remove(projectileId);
+    }
+
+    public Collection<ActiveVehicle> getAllVehicles() {
+        return Collections.unmodifiableCollection(vehiclesById.values());
+    }
+}
