@@ -1,0 +1,87 @@
+settings:
+  radar-range: 100.0
+  drone-max-range: 140.0
+  tick-interval: 1
+  allow-block-damage: false
+  explosion-power-tank: 4.5
+  explosion-power-bomb: 6.0
+  explosion-power-fpv: 5.0
+  explosion-power-vog: 2.8
+
+armor-reduction:
+  plate_carrier: 0.25
+  tactical_helmet: 0.15
+
+vehicles:
+  oplot:
+    name: "БМ «Оплот»"
+    max-hp: 1200.0
+    speed: 0.32
+    ammo-cooldown-ticks: 45
+    mg-cooldown-ticks: 3
+  t80:
+    name: "Т-80"
+    max-hp: 1100.0
+    speed: 0.36
+    ammo-cooldown-ticks: 40
+    mg-cooldown-ticks: 3
+  bmp2:
+    name: "БМП-2"
+    max-hp: 650.0
+    speed: 0.44
+    ammo-cooldown-ticks: 14
+    mg-cooldown-ticks: 4
+  kozak:
+    name: "Бронеавтомобиль «Козак»"
+    max-hp: 420.0
+    speed: 0.56
+    ammo-cooldown-ticks: 20
+    mg-cooldown-ticks: 3
+  f16:
+    name: "F-16 Fighting Falcon"
+    max-hp: 520.0
+    speed: 1.15
+    ammo-cooldown-ticks: 35
+    mg-cooldown-ticks: 2
+  su30sm:
+    name: "Су-30СМ"
+    max-hp: 680.0
+    speed: 1.10
+    ammo-cooldown-ticks: 30
+    mg-cooldown-ticks: 2
+  mi24:
+    name: "Ударный вертолёт Ми-24"
+    max-hp: 600.0
+    speed: 0.68
+    ammo-cooldown-ticks: 25
+    mg-cooldown-ticks: 3
+  fpv_drone:
+    name: "FPV-дрон камикадзе"
+    max-hp: 35.0
+    speed: 0.72
+    ammo-cooldown-ticks: 0
+    mg-cooldown-ticks: 0
+  mavic_drone:
+    name: "Дрон-разведчик «Mavic»"
+    max-hp: 55.0
+    speed: 0.52
+    ammo-cooldown-ticks: 25
+    mg-cooldown-ticks: 0
+  patriot:
+    name: "ЗРК «Patriot»"
+    max-hp: 800.0
+    speed: 0.0
+    ammo-cooldown-ticks: 35
+    mg-cooldown-ticks: 0
+  irist:
+    name: "ЗРК «Iris-T»"
+    max-hp: 750.0
+    speed: 0.0
+    ammo-cooldown-ticks: 25
+    mg-cooldown-ticks: 0
+  gepard:
+    name: "ЗСУ «Gepard»"
+    max-hp: 700.0
+    speed: 0.34
+    ammo-cooldown-ticks: 4
+    mg-cooldown-ticks: 0
